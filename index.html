@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swish NFC URL Generator | Skapa Swish-länkar för NFC-taggar</title>
+  <meta name="description" content="Generera Swish-URL och skriv direkt till NFC-taggar eller QR-koder. Stöd för valfritt belopp, fast belopp, meddelande eller bara telefonnummer.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%200%20100%20100%22><text y=%22.9em%22 font-size=%2290%22>📲</text></svg>">
+</head>
+<body>
+  <div class="background-decorations" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <header class="app-header">
+    <div class="container header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8.32a7.43 7.43 0 0 1 0 7.36"></path>
+            <path d="M9.46 6a11.83 11.83 0 0 1 0 12"></path>
+            <path d="M14 3.5a16.2 16.2 0 0 1 0 17"></path>
+            <rect x="2" y="2" width="20" height="20" rx="5" stroke-dasharray="2 2" stroke-width="1.5"></rect>
+          </svg>
+        </div>
+        <div>
+          <h1>Swish NFC <span>URL Generator</span></h1>
+          <p class="brand-subtitle">Skapa betalningslänkar för NFC-taggar, QR-koder och direktöverföring</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span id="nfcSupportBadge" class="badge badge-info">
+          <span class="status-dot"></span> Undersöker Web NFC...
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-layout">
+    <!-- Vänster kolumn: Formulär & inställningar -->
+    <section class="config-section" aria-labelledby="form-heading">
+      <div class="glass-card">
+        <div class="card-header">
+          <h2 id="form-heading">
+            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            Betalningsuppgifter
+          </h2>
+          <span class="badge badge-pill">Steg 1 av 2</span>
+        </div>
+
+        <!-- Snabbmallar / Presets -->
+        <div class="preset-group">
+          <label class="field-label">Snabbmallar (Klicka för att välja):</label>
+          <div class="preset-chips">
+            <button type="button" class="preset-chip active" data-preset="number-only">
+              <span class="preset-emoji">📱</span> Bara nummer
+            </button>
+            <button type="button" class="preset-chip" data-preset="coffee">
+              <span class="preset-emoji">☕</span> Fika (35 kr)
+            </button>
+            <button type="button" class="preset-chip" data-preset="lunch">
+              <span class="preset-emoji">🥗</span> Lunch (125 kr)
+            </button>
+            <button type="button" class="preset-chip" data-preset="flea-market">
+              <span class="preset-emoji">🏷️</span> Loppis (Valfritt)
+            </button>
+            <button type="button" class="preset-chip" data-preset="parking">
+              <span class="preset-emoji">🚗</span> Parkering (50 kr)
+            </button>
+          </div>
+        </div>
+
+        <form id="swishForm" onsubmit="return false;">
+          <!-- Mottagare / Swish-nummer -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="payeeInput" class="field-label required">
+                Mottagare (Swish-nummer eller mobil)
+              </label>
+              <span id="numberTypeBadge" class="type-badge">Privat / Företag</span>
+            </div>
+            <div class="input-wrapper">
+              <span class="input-prefix-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+              </span>
+              <input 
+                type="tel" 
+                id="payeeInput" 
+                placeholder="t.ex. 070 123 45 67 eller 123 456 78 90" 
+                autocomplete="tel" 
+                required 
+                value="0701234567"
+              >
+              <button type="button" id="clearPayeeBtn" class="clear-btn" title="Rensa nummer" aria-label="Rensa nummer">✕</button>
+            </div>
+            <div class="field-hint">
+              <span>Godkänner svenska mobilnummer (07X) samt företagsnummer (123...)</span>
+            </div>
+          </div>
+
+          <!-- Belopp (Valfritt) -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="amountInput" class="field-label">
+                Belopp (SEK) <span class="optional-tag">Valfritt</span>
+              </label>
+              <span class="info-tag">Lämna tomt för valfritt belopp</span>
+            </div>
+            <div class="input-wrapper">
+              <span class="input-prefix-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <text x="5" y="18" font-size="16" font-weight="bold" fill="currentColor">kr</text>
+                </svg>
+              </span>
+              <input 
+                type="number" 
+                id="amountInput" 
+                placeholder="Valfritt belopp (t.ex. 50)" 
+                min="1" 
+                step="any"
+              >
+              <span class="input-suffix">SEK</span>
+            </div>
+
+            <!-- Snabba beloppsknappar -->
+            <div class="quick-amounts">
+              <button type="button" class="quick-amt-btn" data-amt="">Valfritt</button>
+              <button type="button" class="quick-amt-btn" data-amt="25">25 kr</button>
+              <button type="button" class="quick-amt-btn" data-amt="50">50 kr</button>
+              <button type="button" class="quick-amt-btn" data-amt="100">100 kr</button>
+              <button type="button" class="quick-amt-btn" data-amt="200">200 kr</button>
+              <button type="button" class="quick-amt-btn" data-amt="500">500 kr</button>
+            </div>
+
+            <!-- Lås belopp switch -->
+            <div class="toggle-control" id="amountLockContainer" style="display: none;">
+              <label class="switch">
+                <input type="checkbox" id="amountLockToggle">
+                <span class="slider"></span>
+              </label>
+              <div class="toggle-text">
+                <span class="toggle-title">Lås beloppet</span>
+                <span class="toggle-desc">Betalaren kan inte ändra summan i Swish-appen</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Meddelande (Valfritt) -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="messageInput" class="field-label">
+                Meddelande <span class="optional-tag">Valfritt</span>
+              </label>
+              <span id="charCount" class="char-counter">0 / 50</span>
+            </div>
+            <div class="input-wrapper">
+              <span class="input-prefix-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </span>
+              <input 
+                type="text" 
+                id="messageInput" 
+                placeholder="t.ex. Fika, Loppis, Present (max 50 tecken)" 
+                maxlength="50"
+              >
+            </div>
+
+            <!-- Lås meddelande switch -->
+            <div class="toggle-control" id="messageLockContainer" style="display: none;">
+              <label class="switch">
+                <input type="checkbox" id="messageLockToggle">
+                <span class="slider"></span>
+              </label>
+              <div class="toggle-text">
+                <span class="toggle-title">Lås meddelandet</span>
+                <span class="toggle-desc">Betalaren kan inte ändra meddelandet i Swish-appen</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sammanfattning av valt läge -->
+          <div class="summary-card" id="modeSummaryCard">
+            <div class="summary-icon">💡</div>
+            <div class="summary-content">
+              <div class="summary-heading" id="summaryModeTitle">Läge: Endast mottagarnummer</div>
+              <p class="summary-text" id="summaryModeDesc">Betalaren blippar taggen och Swish öppnas med mottagaren vald. Betalaren skriver själv in belopp och meddelande fritt.</p>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- NFC Tag Memory & Kapacitetsberäknare -->
+      <div class="glass-card nfc-specs-card">
+        <div class="card-header">
+          <h3>
+            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="3"></rect>
+              <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"></path>
+            </svg>
+            NFC-tagg Kapacitetskalkylator
+          </h3>
+          <span class="byte-count-pill" id="byteCounter">0 bytes</span>
+        </div>
+        <p class="section-subtext">Visar beräknad storlek på NDEF URL-posten och vilka taggtyper den ryms i:</p>
+
+        <div class="nfc-tag-meters">
+          <div class="tag-meter-item" id="tagMeter213">
+            <div class="tag-meter-header">
+              <span class="tag-name">NTAG213 <small>(Mest populär)</small></span>
+              <span class="tag-status">144 B tillgängligt</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="meterFill213" style="width: 50%;"></div>
+            </div>
+            <div class="tag-verdict" id="verdict213">✅ Får plats med god marginal</div>
+          </div>
+
+          <div class="tag-meter-item" id="tagMeter215">
+            <div class="tag-meter-header">
+              <span class="tag-name">NTAG215 / NTAG216</span>
+              <span class="tag-status">504 B / 888 B</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="meterFill215" style="width: 20%;"></div>
+            </div>
+            <div class="tag-verdict">✅ Perfekt stöd</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Höger kolumn: Resultat, Web NFC, QR-kod & Live Swish Mockup -->
+    <section class="result-section" aria-labelledby="result-heading">
+      <!-- Resultat & Skriv till NFC -->
+      <div class="glass-card main-result-card">
+        <div class="card-header">
+          <h2 id="result-heading">
+            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Färdig Swish-URL
+          </h2>
+          <span class="badge badge-success">Redo för NFC</span>
+        </div>
+
+        <!-- URL Format Selector -->
+        <div class="url-format-tabs">
+          <button type="button" class="format-tab-btn active" data-format="universal">
+            <span class="tab-title">🌐 Universell HTTPS (Rekommenderas)</span>
+            <span class="tab-subtitle">app.swish.nu &bull; Bäst för NFC, iPhone & Android</span>
+          </button>
+          <button type="button" class="format-tab-btn" data-format="scheme">
+            <span class="tab-title">⚡ Direkt App-länk</span>
+            <span class="tab-subtitle">swish://payment &bull; Startar appen direkt</span>
+          </button>
+        </div>
+
+        <!-- URL Output Box -->
+        <div class="url-output-container">
+          <label for="generatedUrl" class="sr-only">Genererad URL</label>
+          <textarea id="generatedUrl" readonly rows="2" spellcheck="false" title="Genererad Swish URL"></textarea>
+          <div class="url-actions">
+            <button type="button" id="copyUrlBtn" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Kopiera URL
+            </button>
+            <a id="testSwishBtn" href="#" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Testa i Swish
+            </a>
+          </div>
+        </div>
+
+        <!-- Web NFC Direkt-skrivknapp -->
+        <div class="web-nfc-box">
+          <div class="nfc-action-header">
+            <h4>
+              <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+              Direkt NFC-skrivning
+            </h4>
+            <span class="nfc-compat-pill" id="nfcStatusText">Web NFC stöds</span>
+          </div>
+
+          <div id="webNfcAvailableArea">
+            <p class="nfc-desc">Skriv denna Swish-länk direkt till en tom eller återanvändbar NFC-tagg utan externa appar:</p>
+            <button type="button" id="startNfcWriteBtn" class="btn btn-accent btn-large">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 8.32a7.43 7.43 0 0 1 0 7.36"></path>
+                <path d="M9.46 6a11.83 11.83 0 0 1 0 12"></path>
+                <path d="M14 3.5a16.2 16.2 0 0 1 0 17"></path>
+              </svg>
+              Skriv till NFC-tagg nu
+            </button>
+          </div>
+
+          <div id="webNfcFallbackArea" class="nfc-fallback-instructions" style="display: none;">
+            <p><strong>Tips för iPhone & andra webbläsare:</strong> Web NFC kräver Chrome på Android. För iPhone och PC rekommenderas gratisappen <strong>NFC Tools</strong>:</p>
+            <ol class="tools-steps">
+              <li>Klicka <strong>"Kopiera URL"</strong> ovan</li>
+              <li>Öppna appen <strong>NFC Tools</strong> (eller NXP TagWriter)</li>
+              <li>Välj <strong>Write (Skriv)</strong> &rarr; <strong>Add a record (Lägg till post)</strong></li>
+              <li>Välj <strong>URL / URI</strong> och klistra in länken</li>
+              <li>Klicka <strong>Write</strong> och håll taggen mot telefonen!</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- QR-kod Sektion -->
+        <div class="qr-preview-section">
+          <div class="qr-header">
+            <h4>
+              <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              QR-kod för betalningen
+            </h4>
+            <button type="button" id="downloadQrBtn" class="btn-text">Ladda ner PNG</button>
+          </div>
+          <div class="qr-wrapper">
+            <div id="qrcodeCanvas" class="qr-container"></div>
+            <div class="qr-info">
+              <p>Scanna med en annan mobilkamera eller Swish-appen för att verifiera betalningen innan du skriver till taggen.</p>
+              <div class="qr-meta-chips">
+                <span class="meta-chip" id="qrMetaAmount">Valfritt belopp</span>
+                <span class="meta-chip" id="qrMetaMsg">Inget meddelande</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Mockup av Swish-mottagarskärmen -->
+      <div class="glass-card mockup-card">
+        <div class="card-header">
+          <h3>
+            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+              <line x1="12" y1="18" x2="12" y2="18.01"></line>
+            </svg>
+            Kundens vy (När NFC-taggen blippas)
+          </h3>
+          <span class="badge badge-info">Förhandsgranskning</span>
+        </div>
+
+        <div class="phone-mockup">
+          <div class="phone-speaker"></div>
+          <div class="phone-screen">
+            <div class="mock-swish-header">
+              <div class="mock-swish-logo">
+                <span class="swish-dot red"></span>
+                <span class="swish-dot blue"></span>
+                <span class="mock-swish-title">swish</span>
+              </div>
+            </div>
+
+            <div class="mock-swish-body">
+              <div class="mock-field">
+                <span class="mock-field-label">Till</span>
+                <span class="mock-field-value payee-value" id="mockPayee">070 123 45 67</span>
+              </div>
+
+              <div class="mock-field highlight-field">
+                <span class="mock-field-label">Belopp</span>
+                <div class="mock-amount-row">
+                  <span class="mock-amount-value" id="mockAmount">Valfritt</span>
+                  <span class="mock-lock-icon" id="mockAmountLock" style="display: none;" title="Låst belopp">🔒</span>
+                </div>
+              </div>
+
+              <div class="mock-field">
+                <span class="mock-field-label">Meddelande</span>
+                <div class="mock-message-row">
+                  <span class="mock-message-value" id="mockMessage">Inget meddelande</span>
+                  <span class="mock-lock-icon" id="mockMessageLock" style="display: none;" title="Låst meddelande">🔒</span>
+                </div>
+              </div>
+
+              <div class="mock-swish-btn">
+                <span>Swisha</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- NFC Skriv-Modal / Overlay -->
+  <div id="nfcModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-animation-area">
+        <div class="radar-circle circle-1"></div>
+        <div class="radar-circle circle-2"></div>
+        <div class="radar-circle circle-3"></div>
+        <div class="phone-nfc-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+            <path d="M12 18h.01"></path>
+            <path d="M8.5 7.5a4.5 4.5 0 0 1 7 0"></path>
+            <path d="M10 10a2 2 0 0 1 4 0"></path>
+          </svg>
+        </div>
+      </div>
+      <h3 id="nfcModalTitle">Håll NFC-taggen mot telefonen</h3>
+      <p id="nfcModalDesc">Placera taggen intill telefonens baksida tills den vibrerar eller bekräftar...</p>
+      <div class="modal-actions">
+        <button type="button" id="cancelNfcModalBtn" class="btn btn-secondary">Avbryt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Meddelande -->
+  <div id="toastNotification" class="toast" role="status" aria-live="polite">
+    <span class="toast-icon">✓</span>
+    <span id="toastMessage">Kopierat!</span>
+  </div>
+
+  <footer class="app-footer">
+    <div class="container footer-content">
+      <p>Swish NFC URL Generator &bull; Skapad för enkel och snabb programmering av NTAG213 / NTAG215 taggar.</p>
+      <p class="disclaimer">Swish är ett registrerat varumärke som tillhör Getswish AB. Detta verktyg är ett oberoende hjälpmedel för NFC- och QR-kodskonfigurering.</p>
+    </div>
+  </footer>
+
+  <script src="qrcode.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
