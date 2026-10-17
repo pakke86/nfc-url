@@ -1,38 +1,36 @@
 /**
- * Swish NFC URL Generator - Main Application Logic
- * Supports: Only Number, Number + Amount, Number + Message, Number + Amount + Message
- * Includes: Web NFC Writing (NDEFReader), QR Code rendering, Byte Tracker & Swish Mockup
+ * Swish & NFC URL Generator Suite - Application Logic
+ * Supports:
+ * - 💳 Swish: Universal HTTPS (app.swish.nu) & App Deep Link (swish://)
+ * - 📶 Wi-Fi: Direct connect (WIFI:S:...)
+ * - 🔗 Web URL: Any website, menu, social profile
+ * - 📇 vCard: Digital business card
+ * - 📍 Maps: Google Maps location
+ * - 💬 SMS / Phone Call
  */
 
 (function () {
   'use strict';
 
-  // DOM Elements
-  const payeeInput = document.getElementById('payeeInput');
-  const clearPayeeBtn = document.getElementById('clearPayeeBtn');
-  const numberTypeBadge = document.getElementById('numberTypeBadge');
-  const amountInput = document.getElementById('amountInput');
-  const amountLockContainer = document.getElementById('amountLockContainer');
-  const amountLockToggle = document.getElementById('amountLockToggle');
-  const messageInput = document.getElementById('messageInput');
-  const messageLockContainer = document.getElementById('messageLockContainer');
-  const messageLockToggle = document.getElementById('messageLockToggle');
-  const charCount = document.getElementById('charCount');
+  // State
+  let activeCategory = 'swish'; // 'swish', 'wifi', 'url', 'vcard', 'maps', 'sms'
+  let currentSwishFormat = 'universal'; // 'universal' or 'scheme'
+  let qrInstance = null;
+  let nfcAbortController = null;
 
-  // Summary Elements
-  const summaryModeTitle = document.getElementById('summaryModeTitle');
-  const summaryModeDesc = document.getElementById('summaryModeDesc');
-
-  // NFC Meter Elements
+  // Global Output Elements
+  const generatedUrlTextarea = document.getElementById('generatedUrl');
+  const copyUrlBtn = document.getElementById('copyUrlBtn');
+  const testSwishBtn = document.getElementById('testSwishBtn');
+  const testBtnText = document.getElementById('testBtnText');
   const byteCounter = document.getElementById('byteCounter');
   const meterFill213 = document.getElementById('meterFill213');
   const verdict213 = document.getElementById('verdict213');
   const meterFill215 = document.getElementById('meterFill215');
-
-  // Result Elements
-  const generatedUrlTextarea = document.getElementById('generatedUrl');
-  const copyUrlBtn = document.getElementById('copyUrlBtn');
-  const testSwishBtn = document.getElementById('testSwishBtn');
+  const qrcodeCanvas = document.getElementById('qrcodeCanvas');
+  const downloadQrBtn = document.getElementById('downloadQrBtn');
+  const qrInfoDesc = document.getElementById('qrInfoDesc');
+  const qrMetaChips = document.getElementById('qrMetaChips');
 
   // Web NFC Elements
   const nfcSupportBadge = document.getElementById('nfcSupportBadge');
@@ -45,31 +43,80 @@
   const nfcModalTitle = document.getElementById('nfcModalTitle');
   const nfcModalDesc = document.getElementById('nfcModalDesc');
 
-  // QR Code Elements
-  const qrcodeCanvas = document.getElementById('qrcodeCanvas');
-  const downloadQrBtn = document.getElementById('downloadQrBtn');
-  const qrMetaAmount = document.getElementById('qrMetaAmount');
-  const qrMetaMsg = document.getElementById('qrMetaMsg');
-
   // Mockup Elements
+  const mockupTypeBadge = document.getElementById('mockupTypeBadge');
+  const mockupScreenSwish = document.getElementById('mockupScreenSwish');
+  const mockupScreenGeneric = document.getElementById('mockupScreenGeneric');
   const mockPayee = document.getElementById('mockPayee');
   const mockAmount = document.getElementById('mockAmount');
   const mockAmountLock = document.getElementById('mockAmountLock');
   const mockMessage = document.getElementById('mockMessage');
   const mockMessageLock = document.getElementById('mockMessageLock');
+  const mockGenIcon = document.getElementById('mockGenIcon');
+  const mockGenTitle = document.getElementById('mockGenTitle');
+  const mockGenSub = document.getElementById('mockGenSub');
+  const mockGenBody = document.getElementById('mockGenBody');
+  const mockGenBtn = document.getElementById('mockGenBtn');
+  const mockGenBtnText = document.getElementById('mockGenBtnText');
 
   // Toast
   const toast = document.getElementById('toastNotification');
   const toastMsg = document.getElementById('toastMessage');
 
-  // Presets & Quick Buttons
-  const presetChips = document.querySelectorAll('.preset-chip');
-  const quickAmtBtns = document.querySelectorAll('.quick-amt-btn');
+  // Category Tabs & Panels
+  const categoryTabs = document.querySelectorAll('.category-tab');
+  const categoryPanels = document.querySelectorAll('.category-panel');
+  const swishFormatTabs = document.getElementById('swishFormatTabs');
   const formatTabBtns = document.querySelectorAll('.format-tab-btn');
 
-  let currentFormat = 'universal'; // 'universal' (https://app.swish.nu) or 'scheme' (swish://payment)
-  let qrInstance = null;
-  let nfcAbortController = null;
+  // Swish Form Elements
+  const payeeInput = document.getElementById('payeeInput');
+  const clearPayeeBtn = document.getElementById('clearPayeeBtn');
+  const numberTypeBadge = document.getElementById('numberTypeBadge');
+  const amountInput = document.getElementById('amountInput');
+  const amountLockContainer = document.getElementById('amountLockContainer');
+  const amountLockToggle = document.getElementById('amountLockToggle');
+  const amountLockBadge = document.getElementById('amountLockBadge');
+  const amountLockStatusText = document.getElementById('amountLockStatusText');
+  const messageInput = document.getElementById('messageInput');
+  const messageLockContainer = document.getElementById('messageLockContainer');
+  const messageLockToggle = document.getElementById('messageLockToggle');
+  const messageLockBadge = document.getElementById('messageLockBadge');
+  const messageLockStatusText = document.getElementById('messageLockStatusText');
+  const charCount = document.getElementById('charCount');
+  const summaryModeTitle = document.getElementById('summaryModeTitle');
+  const summaryModeDesc = document.getElementById('summaryModeDesc');
+  const presetChips = document.querySelectorAll('.preset-chip:not(.url-preset)');
+  const quickAmtBtns = document.querySelectorAll('.quick-amt-btn');
+
+  // Wi-Fi Form Elements
+  const wifiSsid = document.getElementById('wifiSsid');
+  const wifiPassword = document.getElementById('wifiPassword');
+  const wifiAuth = document.getElementById('wifiAuth');
+  const wifiHidden = document.getElementById('wifiHidden');
+
+  // URL Form Elements
+  const customUrlInput = document.getElementById('customUrlInput');
+  const urlPresets = document.querySelectorAll('.url-preset');
+
+  // vCard Form Elements
+  const vcFirstName = document.getElementById('vcFirstName');
+  const vcLastName = document.getElementById('vcLastName');
+  const vcPhone = document.getElementById('vcPhone');
+  const vcEmail = document.getElementById('vcEmail');
+  const vcCompany = document.getElementById('vcCompany');
+  const vcTitle = document.getElementById('vcTitle');
+
+  // Maps Form Elements
+  const mapsAddress = document.getElementById('mapsAddress');
+
+  // SMS Form Elements
+  const smsPhone = document.getElementById('smsPhone');
+  const smsBody = document.getElementById('smsBody');
+  const smsBodyGroup = document.getElementById('smsBodyGroup');
+  const actionSmsBtn = document.getElementById('actionSmsBtn');
+  const actionCallBtn = document.getElementById('actionCallBtn');
+  let currentSmsMode = 'sms'; // 'sms' or 'call'
 
   // 1. Initial Web NFC Capability Detection
   function checkNfcSupport() {
@@ -92,12 +139,63 @@
     }
   }
 
-  // 2. Normalize and Format Swedish Phone / Merchant Numbers
+  // 2. Category Switcher
+  function switchCategory(categoryKey) {
+    activeCategory = categoryKey;
+    categoryTabs.forEach(tab => {
+      tab.classList.toggle('active', tab.getAttribute('data-category') === categoryKey);
+    });
+
+    categoryPanels.forEach(panel => {
+      panel.classList.toggle('active', panel.id === `panel-${categoryKey}`);
+    });
+
+    // Show format tabs only for Swish
+    swishFormatTabs.style.display = (categoryKey === 'swish') ? 'grid' : 'none';
+
+    // Update mockup screen visibility
+    if (categoryKey === 'swish') {
+      mockupTypeBadge.textContent = 'Swish Vy';
+      mockupScreenSwish.style.display = 'flex';
+      mockupScreenGeneric.style.display = 'none';
+    } else {
+      mockupScreenSwish.style.display = 'none';
+      mockupScreenGeneric.style.display = 'flex';
+    }
+
+    generateCurrent();
+  }
+
+  // 3. Central Dispatcher
+  function generateCurrent() {
+    switch (activeCategory) {
+      case 'swish':
+        generateSwish();
+        break;
+      case 'wifi':
+        generateWifi();
+        break;
+      case 'url':
+        generateUrl();
+        break;
+      case 'vcard':
+        generateVCard();
+        break;
+      case 'maps':
+        generateMaps();
+        break;
+      case 'sms':
+        generateSms();
+        break;
+    }
+  }
+
+  // ==========================================
+  // SWISH GENERATOR
+  // ==========================================
   function sanitizePayee(raw) {
     if (!raw) return '';
-    // Strip everything except digits and plus sign
     let cleaned = raw.replace(/[^\d+]/g, '');
-    // If starts with +46, convert to Swedish 07x or keep for normalization
     if (cleaned.startsWith('+46')) {
       cleaned = '0' + cleaned.substring(3);
     } else if (cleaned.startsWith('46') && cleaned.length >= 10 && cleaned[2] === '7') {
@@ -109,12 +207,7 @@
   function formatPayeeDisplay(raw) {
     const cleaned = sanitizePayee(raw);
     if (!cleaned) return '';
-    // Company 123 xxx xx xx
-    if (cleaned.startsWith('123') && cleaned.length === 10) {
-      return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 8)} ${cleaned.slice(8, 10)}`;
-    }
-    // Mobile 07x xxx xx xx
-    if (cleaned.startsWith('07') && cleaned.length === 10) {
+    if ((cleaned.startsWith('123') || cleaned.startsWith('07')) && cleaned.length === 10) {
       return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 8)} ${cleaned.slice(8, 10)}`;
     }
     return cleaned;
@@ -142,8 +235,7 @@
     }
   }
 
-  // 3. Main Generator Logic
-  function generateSwishPayload() {
+  function generateSwish() {
     const rawPayee = payeeInput.value.trim();
     const cleanPayee = sanitizePayee(rawPayee);
     const amountVal = parseFloat(amountInput.value);
@@ -158,6 +250,31 @@
     amountLockContainer.style.display = hasAmount ? 'flex' : 'none';
     messageLockContainer.style.display = hasMessage ? 'flex' : 'none';
 
+    // Update lock badges & classes
+    if (isAmountLocked) {
+      amountLockBadge.textContent = 'Låst';
+      amountLockBadge.className = 'lock-status-badge';
+      amountLockStatusText.textContent = 'Belopp är låst';
+      amountLockContainer.classList.add('active');
+    } else {
+      amountLockBadge.textContent = 'Redigerbart (&edit=amt)';
+      amountLockBadge.className = 'lock-status-badge unlocked';
+      amountLockStatusText.textContent = 'Kunden kan ändra belopp';
+      amountLockContainer.classList.remove('active');
+    }
+
+    if (isMessageLocked) {
+      messageLockBadge.textContent = 'Låst';
+      messageLockBadge.className = 'lock-status-badge';
+      messageLockStatusText.textContent = 'Meddelande är låst';
+      messageLockContainer.classList.add('active');
+    } else {
+      messageLockBadge.textContent = 'Redigerbart (&edit=msg)';
+      messageLockBadge.className = 'lock-status-badge unlocked';
+      messageLockStatusText.textContent = 'Kunden kan ändra meddelande';
+      messageLockContainer.classList.remove('active');
+    }
+
     // Char count update
     charCount.textContent = `${messageVal.length} / 50`;
     charCount.style.color = messageVal.length >= 45 ? '#f43f5e' : 'var(--text-dim)';
@@ -165,12 +282,10 @@
     // Update Number type badge
     detectNumberType(cleanPayee);
 
-    // Build Swish JSON structure
+    // Build Payload for Scheme
     const payload = {
       version: 1,
-      payee: {
-        value: cleanPayee || '0701234567'
-      }
+      payee: { value: cleanPayee || '0701234567' }
     };
 
     if (hasAmount) {
@@ -187,14 +302,12 @@
       };
     }
 
-    // Current format: 'universal' (https://app.swish.nu) or 'scheme' (swish://payment)
+    // Build URL
     let fullSwishUrl = '';
     const activePayee = cleanPayee || '0701234567';
 
-    if (currentFormat === 'universal') {
-      // Official Swish Web / Universal URL (Optimal for NFC & iOS/Android background read)
-      // Note on Swish spec: by default in Swish, prefilled fields are locked.
-      // To allow the payer to edit a field, the 'edit' parameter is added (e.g. edit=amt, edit=msg, edit=amt,msg).
+    if (currentSwishFormat === 'universal') {
+      // Swish Web Universal URL
       let url = `https://app.swish.nu/1/p/sw/?sw=${encodeURIComponent(activePayee)}`;
       if (hasAmount) {
         url += `&amt=${amountVal}&cur=SEK`;
@@ -203,7 +316,7 @@
         url += `&msg=${encodeURIComponent(messageVal)}`;
       }
 
-      // Add edit parameter for unlocked/editable fields
+      // Add edit parameter for unlocked fields
       const editableFields = [];
       if (hasAmount && !isAmountLocked) {
         editableFields.push('amt');
@@ -217,31 +330,35 @@
 
       fullSwishUrl = url;
     } else {
-      // Swish URI Scheme (App Deep Link)
+      // Swish URI Scheme
       const jsonStr = JSON.stringify(payload);
-      const encodedData = encodeURIComponent(jsonStr);
-      fullSwishUrl = `swish://payment?data=${encodedData}`;
+      fullSwishUrl = `swish://payment?data=${encodeURIComponent(jsonStr)}`;
     }
 
-    // Update Output & Test Button
-    generatedUrlTextarea.value = fullSwishUrl;
-    testSwishBtn.href = fullSwishUrl;
+    // Output
+    setResultOutput(fullSwishUrl, fullSwishUrl, 'Öppna i Swish');
 
-    // Update Mode Summary Card
-    updateSummaryCard(hasAmount, amountVal, isAmountLocked, hasMessage, messageVal, isMessageLocked);
+    // Summary Card
+    updateSwishSummary(hasAmount, amountVal, isAmountLocked, hasMessage, messageVal, isMessageLocked);
 
-    // Update Mockup
-    updateMockup(cleanPayee || '070 123 45 67', hasAmount, amountVal, isAmountLocked, hasMessage, messageVal, isMessageLocked);
+    // Mockup
+    mockPayee.textContent = formatPayeeDisplay(cleanPayee) || '070 123 45 67';
+    mockAmount.textContent = hasAmount ? `${amountVal} kr` : 'Valfritt belopp';
+    mockAmountLock.style.display = isAmountLocked ? 'inline' : 'none';
+    mockMessage.textContent = hasMessage ? messageVal : 'Inget meddelande';
+    mockMessageLock.style.display = isMessageLocked ? 'inline' : 'none';
 
-    // Update NFC Byte Meters
-    updateNfcMeter(fullSwishUrl);
+    // QR Meta
+    qrInfoDesc.textContent = 'Scanna med Swish eller mobilkamera för att förhandsgranska betalningen.';
+    qrMetaChips.innerHTML = `
+      <span class="meta-chip">${hasAmount ? `${amountVal} kr (${isAmountLocked ? 'Låst' : 'Redigerbart'})` : 'Valfritt belopp'}</span>
+      <span class="meta-chip">${hasMessage ? `"${messageVal}"` : 'Inget meddelande'}</span>
+    `;
 
-    // Update QR Code
-    updateQrCode(fullSwishUrl, hasAmount, amountVal, hasMessage, messageVal);
+    renderQr(fullSwishUrl);
   }
 
-  // 4. Update Summary Card
-  function updateSummaryCard(hasAmount, amount, amountLocked, hasMsg, msg, msgLocked) {
+  function updateSwishSummary(hasAmount, amount, amountLocked, hasMsg, msg, msgLocked) {
     if (!hasAmount && !hasMsg) {
       summaryModeTitle.textContent = 'Läge: Endast mottagarnummer';
       summaryModeDesc.textContent = 'Kunden blippar NFC-taggen och Swish öppnas med mottagaren vald. Kunden fyller i valfritt belopp och eventuellt eget meddelande.';
@@ -249,77 +366,262 @@
       summaryModeTitle.textContent = `Läge: Nummer + ${amountLocked ? 'Låst' : 'Redigerbart'} belopp (${amount} kr)`;
       summaryModeDesc.textContent = amountLocked 
         ? `Swish öppnas med exakt ${amount} kr förifyllt. Kunden kan inte ändra beloppet.` 
-        : `Swish öppnas med ${amount} kr förifyllt, men kunden kan justera beloppet vid behov.`;
+        : `Swish öppnas med ${amount} kr förifyllt (&edit=amt), men kunden kan justera summan.`;
     } else if (!hasAmount && hasMsg) {
       summaryModeTitle.textContent = `Läge: Nummer + ${msgLocked ? 'Låst' : 'Redigerbart'} meddelande ("${msg}")`;
       summaryModeDesc.textContent = msgLocked 
         ? `Swish öppnas med meddelandet låst. Kunden väljer själv belopp.` 
-        : `Swish öppnas med förslaget meddelande. Kunden väljer själv belopp.`;
+        : `Swish öppnas med förslaget meddelande (&edit=msg). Kunden kan ändra det.`;
     } else {
       summaryModeTitle.textContent = `Läge: Komplett (${amount} kr & "${msg}")`;
-      summaryModeDesc.textContent = `Både belopp och meddelande är förkonfigurerade. ${amountLocked ? 'Beloppet är låst. ' : ''}${msgLocked ? 'Meddelandet är låst.' : ''}`;
+      summaryModeDesc.textContent = `Både belopp och meddelande är förkonfigurerade. ${amountLocked ? 'Beloppet är låst. ' : 'Beloppet är redigerbart (&edit=amt). '}${msgLocked ? 'Meddelandet är låst.' : 'Meddelandet är redigerbart.'}`;
     }
   }
 
-  // 5. Update Swish Live Mockup
-  function updateMockup(payee, hasAmount, amount, amountLocked, hasMsg, msg, msgLocked) {
-    mockPayee.textContent = formatPayeeDisplay(payee) || payee;
-    
-    if (hasAmount) {
-      mockAmount.textContent = `${amount} kr`;
-      mockAmountLock.style.display = amountLocked ? 'inline' : 'none';
-    } else {
-      mockAmount.textContent = 'Valfritt belopp';
-      mockAmountLock.style.display = 'none';
-    }
+  // ==========================================
+  // WI-FI GENERATOR
+  // ==========================================
+  function generateWifi() {
+    const ssid = wifiSsid.value.trim() || 'Mitt-WiFi';
+    const pass = wifiPassword.value;
+    const auth = wifiAuth.value;
+    const hidden = wifiHidden.checked;
 
-    if (hasMsg) {
-      mockMessage.textContent = msg;
-      mockMessageLock.style.display = msgLocked ? 'inline' : 'none';
-    } else {
-      mockMessage.textContent = 'Inget meddelande';
-      mockMessageLock.style.display = 'none';
-    }
+    // Standard Wi-Fi string format: WIFI:S:<SSID>;T:<WPA|WEP|nopass>;P:<password>;H:<true|false>;;
+    const wifiData = `WIFI:S:${ssid};T:${auth};P:${pass};H:${hidden ? 'true' : 'false'};;`;
+
+    setResultOutput(wifiData, '#', 'Koppla upp (Blippa tagg)');
+    testSwishBtn.style.pointerEvents = 'none';
+    testSwishBtn.style.opacity = '0.6';
+
+    mockupTypeBadge.textContent = 'Wi-Fi Anslutning';
+    mockGenIcon.textContent = '📶';
+    mockGenTitle.textContent = `Anslut till "${ssid}"`;
+    mockGenSub.textContent = auth === 'nopass' ? 'Öppet nätverk' : 'Skyddat nätverk';
+    mockGenBody.innerHTML = `
+      <div class="mock-field">
+        <span class="mock-field-label">Nätverk (SSID)</span>
+        <span class="mock-field-value">${ssid}</span>
+      </div>
+      <div class="mock-field">
+        <span class="mock-field-label">Säkerhet</span>
+        <span class="mock-field-value">${auth.toUpperCase()}</span>
+      </div>
+      <div class="mock-field">
+        <span class="mock-field-label">Lösenord</span>
+        <span class="mock-field-value">${auth === 'nopass' ? 'Inget lösenord' : (pass ? '••••••••' : 'Inget')}</span>
+      </div>
+    `;
+    mockGenBtnText.textContent = 'Anslut automatiskt';
+
+    qrInfoDesc.textContent = 'Scanna QR-koden med mobilens kamera för att ansluta direkt till Wi-Fi nätverket!';
+    qrMetaChips.innerHTML = `
+      <span class="meta-chip">Nätverk: ${ssid}</span>
+      <span class="meta-chip">Kryptering: ${auth}</span>
+    `;
+
+    renderQr(wifiData);
   }
 
-  // 6. NFC Tag Memory Calculator
-  function updateNfcMeter(url) {
-    // UTF-8 byte length of URL + NDEF URI Record overhead (~5 bytes header + protocol code)
+  // ==========================================
+  // URL / WEBBADRESS GENERATOR
+  // ==========================================
+  function generateUrl() {
+    let url = customUrlInput.value.trim();
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    const finalUrl = url || 'https://google.com';
+
+    setResultOutput(finalUrl, finalUrl, 'Öppna länk');
+    testSwishBtn.style.pointerEvents = 'auto';
+    testSwishBtn.style.opacity = '1';
+
+    mockupTypeBadge.textContent = 'Webbadress';
+    mockGenIcon.textContent = '🌐';
+    mockGenTitle.textContent = 'Öppna Webbsida';
+    mockGenSub.textContent = finalUrl;
+    mockGenBody.innerHTML = `
+      <div class="mock-field">
+        <span class="mock-field-label">Länk (URL)</span>
+        <span class="mock-field-value" style="word-break: break-all; color: #0284c7;">${finalUrl}</span>
+      </div>
+    `;
+    mockGenBtnText.textContent = 'Besök webbplats';
+
+    qrInfoDesc.textContent = 'Scanna med kameran för att öppna länken i webbläsaren.';
+    qrMetaChips.innerHTML = `<span class="meta-chip">${finalUrl}</span>`;
+
+    renderQr(finalUrl);
+  }
+
+  // ==========================================
+  // vCARD / KONTAKTKORT GENERATOR
+  // ==========================================
+  function generateVCard() {
+    const fn = vcFirstName.value.trim() || 'Anders';
+    const ln = vcLastName.value.trim() || 'Svensson';
+    const phone = vcPhone.value.trim() || '0701234567';
+    const email = vcEmail.value.trim();
+    const org = vcCompany.value.trim();
+    const title = vcTitle.value.trim();
+
+    // Compact vCard 3.0 standard
+    let vcard = `BEGIN:VCARD\nVERSION:3.0\nN:${ln};${fn};;;\nFN:${fn} ${ln}\nTEL;TYPE=CELL:${phone}`;
+    if (email) vcard += `\nEMAIL:${email}`;
+    if (org) vcard += `\nORG:${org}`;
+    if (title) vcard += `\nTITLE:${title}`;
+    vcard += `\nEND:VCARD`;
+
+    setResultOutput(vcard, '#', 'Spara kontakt (Blippa tagg)');
+    testSwishBtn.style.pointerEvents = 'none';
+    testSwishBtn.style.opacity = '0.6';
+
+    mockupTypeBadge.textContent = 'Digitalt Visitkort';
+    mockGenIcon.textContent = '👤';
+    mockGenTitle.textContent = `${fn} ${ln}`;
+    mockGenSub.textContent = title ? `${title} &bull; ${org}` : (org || 'Kontaktkort');
+    mockGenBody.innerHTML = `
+      <div class="mock-field">
+        <span class="mock-field-label">Mobil</span>
+        <span class="mock-field-value">${phone}</span>
+      </div>
+      ${email ? `
+      <div class="mock-field">
+        <span class="mock-field-label">E-post</span>
+        <span class="mock-field-value">${email}</span>
+      </div>` : ''}
+    `;
+    mockGenBtnText.textContent = 'Spara i kontakter';
+
+    qrInfoDesc.textContent = 'Scanna QR-koden med mobilen för att lägga till kontakten direkt i kontaktboken!';
+    qrMetaChips.innerHTML = `
+      <span class="meta-chip">${fn} ${ln}</span>
+      <span class="meta-chip">${phone}</span>
+    `;
+
+    renderQr(vcard);
+  }
+
+  // ==========================================
+  // GOOGLE MAPS GENERATOR
+  // ==========================================
+  function generateMaps() {
+    const address = mapsAddress.value.trim() || 'Stockholm';
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+
+    setResultOutput(mapsUrl, mapsUrl, 'Öppna i Maps');
+    testSwishBtn.style.pointerEvents = 'auto';
+    testSwishBtn.style.opacity = '1';
+
+    mockupTypeBadge.textContent = 'Google Maps';
+    mockGenIcon.textContent = '📍';
+    mockGenTitle.textContent = 'Visa Plats';
+    mockGenSub.textContent = address;
+    mockGenBody.innerHTML = `
+      <div class="mock-field">
+        <span class="mock-field-label">Destination</span>
+        <span class="mock-field-value">${address}</span>
+      </div>
+    `;
+    mockGenBtnText.textContent = 'Starta vägbeskrivning';
+
+    qrInfoDesc.textContent = 'Scanna för att öppna kartan och starta navigation.';
+    qrMetaChips.innerHTML = `<span class="meta-chip">${address}</span>`;
+
+    renderQr(mapsUrl);
+  }
+
+  // ==========================================
+  // SMS / RING GENERATOR
+  // ==========================================
+  function generateSms() {
+    const phone = smsPhone.value.trim() || '0701234567';
+    const body = smsBody.value.trim();
+
+    let uri = '';
+    if (currentSmsMode === 'sms') {
+      uri = body ? `sms:${phone}?body=${encodeURIComponent(body)}` : `sms:${phone}`;
+      testBtnText.textContent = 'Skicka SMS';
+      mockGenTitle.textContent = 'Skicka SMS';
+      mockGenSub.textContent = `Till ${phone}`;
+      mockGenBody.innerHTML = `
+        <div class="mock-field">
+          <span class="mock-field-label">Till</span>
+          <span class="mock-field-value">${phone}</span>
+        </div>
+        <div class="mock-field">
+          <span class="mock-field-label">Meddelande</span>
+          <span class="mock-field-value">${body || 'Inget förifyllt'}</span>
+        </div>
+      `;
+      mockGenBtnText.textContent = 'Öppna Meddelanden';
+    } else {
+      uri = `tel:${phone}`;
+      testBtnText.textContent = 'Ring samtal';
+      mockGenTitle.textContent = 'Ringa samtal';
+      mockGenSub.textContent = phone;
+      mockGenBody.innerHTML = `
+        <div class="mock-field">
+          <span class="mock-field-label">Telefonnummer</span>
+          <span class="mock-field-value">${phone}</span>
+        </div>
+      `;
+      mockGenBtnText.textContent = 'Ring upp';
+    }
+
+    setResultOutput(uri, uri, testBtnText.textContent);
+    testSwishBtn.style.pointerEvents = 'auto';
+    testSwishBtn.style.opacity = '1';
+
+    mockupTypeBadge.textContent = currentSmsMode === 'sms' ? 'SMS' : 'Samtal';
+    mockGenIcon.textContent = currentSmsMode === 'sms' ? '💬' : '📞';
+
+    qrInfoDesc.textContent = 'Scanna för att ringa eller skicka SMS.';
+    qrMetaChips.innerHTML = `<span class="meta-chip">${phone}</span>`;
+
+    renderQr(uri);
+  }
+
+  // ==========================================
+  // OUTPUT & NFC MEMORY CALCULATOR
+  // ==========================================
+  function setResultOutput(text, testHref, btnLabel) {
+    generatedUrlTextarea.value = text;
+    testSwishBtn.href = testHref;
+    testBtnText.textContent = btnLabel;
+
+    // Memory Calculation
     const encoder = new TextEncoder();
-    const urlBytes = encoder.encode(url).length;
-    // Standard NDEF URI record prefix takes ~4 bytes overhead
-    const ndefTotalBytes = urlBytes + 4;
+    const bytes = encoder.encode(text).length;
+    // NDEF record overhead (~4 bytes)
+    const ndefBytes = bytes + 4;
 
-    byteCounter.textContent = `${ndefTotalBytes} bytes NDEF`;
+    byteCounter.textContent = `${ndefBytes} bytes NDEF`;
 
-    // NTAG213 capacity: 144 bytes
-    const pct213 = Math.min(100, Math.round((ndefTotalBytes / 144) * 100));
+    // NTAG213: 144 B
+    const pct213 = Math.min(100, Math.round((ndefBytes / 144) * 100));
     meterFill213.style.width = `${pct213}%`;
-    
-    if (ndefTotalBytes <= 144) {
+    if (ndefBytes <= 144) {
       meterFill213.style.background = 'linear-gradient(90deg, #38bdf8, #10b981)';
-      verdict213.innerHTML = `✅ Får plats i NTAG213 (${144 - ndefTotalBytes} bytes över)`;
+      verdict213.innerHTML = `✅ Får plats i NTAG213 (${144 - ndefBytes} B över)`;
       verdict213.style.color = '#34d399';
     } else {
       meterFill213.style.background = '#f43f5e';
-      verdict213.innerHTML = `⚠️ För stor för NTAG213! Kräver NTAG215 eller kortare meddelande (${ndefTotalBytes - 144} bytes för mycket)`;
+      verdict213.innerHTML = `⚠️ Kräver NTAG215 (${ndefBytes - 144} B för mycket för NTAG213)`;
       verdict213.style.color = '#fb7185';
     }
 
-    // NTAG215 capacity: 504 bytes
-    const pct215 = Math.min(100, Math.round((ndefTotalBytes / 504) * 100));
+    // NTAG215: 504 B
+    const pct215 = Math.min(100, Math.round((ndefBytes / 504) * 100));
     meterFill215.style.width = `${pct215}%`;
   }
 
-  // 7. QR Code Rendering
-  function updateQrCode(url, hasAmount, amount, hasMsg, msg) {
-    qrMetaAmount.textContent = hasAmount ? `${amount} kr` : 'Valfritt belopp';
-    qrMetaMsg.textContent = hasMsg ? `"${msg}"` : 'Inget meddelande';
-
+  function renderQr(text) {
     if (window.QRCode) {
       qrcodeCanvas.innerHTML = '';
       qrInstance = new window.QRCode(qrcodeCanvas, {
-        text: url,
+        text: text,
         width: 140,
         height: 140,
         colorDark: '#0f172a',
@@ -329,52 +631,51 @@
     }
   }
 
-  // 8. Download QR Code PNG
+  // ==========================================
+  // ACTIONS: COPY, DOWNLOAD, NFC WRITE
+  // ==========================================
+  async function copyOutput() {
+    const text = generatedUrlTextarea.value;
+    if (!text) return;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        generatedUrlTextarea.select();
+        document.execCommand('copy');
+      }
+      showToast('Kopierad till urklipp!');
+    } catch (err) {
+      generatedUrlTextarea.select();
+      showToast('Markera texten och tryck Ctrl+C');
+    }
+  }
+
   function downloadQrCode() {
     const canvas = qrcodeCanvas.querySelector('canvas');
     if (!canvas) {
-      showToast('Ingen QR-kod tillgänglig ännu');
+      showToast('Ingen QR-kod tillgänglig');
       return;
     }
     const link = document.createElement('a');
-    link.download = `swish-qr-${sanitizePayee(payeeInput.value) || 'betalning'}.png`;
+    link.download = `nfc-${activeCategory}-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     showToast('QR-koden har laddats ner som PNG!');
   }
 
-  // 9. Copy to Clipboard
-  async function copyUrl() {
-    const url = generatedUrlTextarea.value;
-    if (!url) return;
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        generatedUrlTextarea.select();
-        document.execCommand('copy');
-      }
-      showToast('Swish-URL kopierad till urklipp!');
-    } catch (err) {
-      generatedUrlTextarea.select();
-      showToast('Markera texten och tryck Ctrl+C / Cmd+C');
-    }
-  }
-
-  // 10. Web NFC Write Process
   async function startNfcWrite() {
     if (!('NDEFReader' in window)) {
       showToast('Web NFC stöds tyvärr inte i denna webbläsare');
       return;
     }
 
-    const swishUrl = generatedUrlTextarea.value;
-    if (!swishUrl) {
-      showToast('Vänligen ange ett giltigt mottagarnummer först');
+    const data = generatedUrlTextarea.value;
+    if (!data) {
+      showToast('Ingen data att skriva');
       return;
     }
 
-    // Show Scanning Modal
     nfcModal.style.display = 'flex';
     nfcModalTitle.textContent = 'Håll NFC-taggen mot telefonen';
     nfcModalDesc.textContent = 'Placera din NTAG213 eller NTAG215 tagg mot baksidan av mobilen...';
@@ -384,19 +685,23 @@
     try {
       const ndef = new window.NDEFReader();
       
-      // Write NDEF URL record
+      // Determine record type: url or text/mime
+      let record;
+      if (data.startsWith('http://') || data.startsWith('https://') || data.startsWith('swish://') || data.startsWith('sms:') || data.startsWith('tel:')) {
+        record = { recordType: 'url', data: data };
+      } else {
+        record = { recordType: 'text', data: data };
+      }
+
       await ndef.write({
-        records: [
-          { recordType: 'url', data: swishUrl }
-        ]
+        records: [record]
       }, { signal: nfcAbortController.signal });
 
-      // Success!
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
       nfcModalTitle.textContent = '🎉 Lyckades!';
-      nfcModalDesc.textContent = 'Swish-länken har skrivits till NFC-taggen!';
+      nfcModalDesc.textContent = 'Datan har skrivits till NFC-taggen!';
 
       setTimeout(() => {
         closeNfcModal();
@@ -404,10 +709,7 @@
       }, 1500);
 
     } catch (error) {
-      if (error.name === 'AbortError') {
-        // User cancelled
-        return;
-      }
+      if (error.name === 'AbortError') return;
       console.error('NFC Write Error:', error);
       nfcModalTitle.textContent = 'Kunde inte skriva';
       nfcModalDesc.textContent = `Ett fel uppstod: ${error.message || 'Kontrollera att NFC är påslaget och att taggen inte är skrivskyddad.'}`;
@@ -422,7 +724,6 @@
     nfcModal.style.display = 'none';
   }
 
-  // 11. Toast Notification Helper
   let toastTimer = null;
   function showToast(message) {
     toastMsg.textContent = message;
@@ -433,8 +734,10 @@
     }, 2800);
   }
 
-  // 12. Presets Handler
-  function applyPreset(presetKey) {
+  // ==========================================
+  // PRESETS
+  // ==========================================
+  function applySwishPreset(presetKey) {
     presetChips.forEach(chip => {
       chip.classList.toggle('active', chip.getAttribute('data-preset') === presetKey);
     });
@@ -471,63 +774,122 @@
         messageLockToggle.checked = true;
         break;
     }
-    generateSwishPayload();
+    generateSwish();
   }
 
-  // Event Listeners
-  payeeInput.addEventListener('input', generateSwishPayload);
+  // ==========================================
+  // EVENT LISTENERS
+  // ==========================================
+  // Category tabs
+  categoryTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      switchCategory(tab.getAttribute('data-category'));
+    });
+  });
+
+  // Swish URL format tabs
+  formatTabBtns.forEach(tab => {
+    tab.addEventListener('click', () => {
+      formatTabBtns.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentSwishFormat = tab.getAttribute('data-format') || 'universal';
+      generateSwish();
+    });
+  });
+
+  // Swish inputs
+  payeeInput.addEventListener('input', generateSwish);
   clearPayeeBtn.addEventListener('click', () => {
     payeeInput.value = '';
     payeeInput.focus();
-    generateSwishPayload();
+    generateSwish();
   });
 
   amountInput.addEventListener('input', () => {
-    // Reset quick amount highlight if custom
     quickAmtBtns.forEach(b => b.classList.remove('active'));
-    generateSwishPayload();
+    generateSwish();
   });
 
-  amountLockToggle.addEventListener('change', generateSwishPayload);
-  messageInput.addEventListener('input', generateSwishPayload);
-  messageLockToggle.addEventListener('change', generateSwishPayload);
+  // Amount lock toggle: listen to both change, input, and click on label
+  amountLockToggle.addEventListener('change', generateSwish);
+  amountLockToggle.addEventListener('input', generateSwish);
+  amountLockContainer.addEventListener('click', () => {
+    setTimeout(generateSwish, 0);
+  });
+
+  messageInput.addEventListener('input', generateSwish);
+  messageLockToggle.addEventListener('change', generateSwish);
+  messageLockToggle.addEventListener('input', generateSwish);
+  messageLockContainer.addEventListener('click', () => {
+    setTimeout(generateSwish, 0);
+  });
 
   // Quick Amount Buttons
   quickAmtBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       quickAmtBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const amt = btn.getAttribute('data-amt');
-      amountInput.value = amt;
-      generateSwishPayload();
+      amountInput.value = btn.getAttribute('data-amt');
+      generateSwish();
     });
   });
 
   // Preset Buttons
   presetChips.forEach(chip => {
     chip.addEventListener('click', () => {
-      applyPreset(chip.getAttribute('data-preset'));
+      applySwishPreset(chip.getAttribute('data-preset'));
     });
   });
 
-  // URL Format Tabs
-  formatTabBtns.forEach(tab => {
-    tab.addEventListener('click', () => {
-      formatTabBtns.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentFormat = tab.getAttribute('data-format') || 'universal';
-      generateSwishPayload();
+  // Wi-Fi inputs
+  wifiSsid.addEventListener('input', generateWifi);
+  wifiPassword.addEventListener('input', generateWifi);
+  wifiAuth.addEventListener('change', generateWifi);
+  wifiHidden.addEventListener('change', generateWifi);
+
+  // URL inputs & presets
+  customUrlInput.addEventListener('input', generateUrl);
+  urlPresets.forEach(btn => {
+    btn.addEventListener('click', () => {
+      customUrlInput.value = btn.getAttribute('data-url');
+      generateUrl();
     });
   });
 
-  // Buttons
-  copyUrlBtn.addEventListener('click', copyUrl);
+  // vCard inputs
+  [vcFirstName, vcLastName, vcPhone, vcEmail, vcCompany, vcTitle].forEach(el => {
+    el.addEventListener('input', generateVCard);
+  });
+
+  // Maps inputs
+  mapsAddress.addEventListener('input', generateMaps);
+
+  // SMS inputs & mode
+  smsPhone.addEventListener('input', generateSms);
+  smsBody.addEventListener('input', generateSms);
+  actionSmsBtn.addEventListener('click', () => {
+    actionSmsBtn.classList.add('active');
+    actionCallBtn.classList.remove('active');
+    smsBodyGroup.style.display = 'block';
+    currentSmsMode = 'sms';
+    generateSms();
+  });
+  actionCallBtn.addEventListener('click', () => {
+    actionCallBtn.classList.add('active');
+    actionSmsBtn.classList.remove('active');
+    smsBodyGroup.style.display = 'none';
+    currentSmsMode = 'call';
+    generateSms();
+  });
+
+  // Global Actions
+  copyUrlBtn.addEventListener('click', copyOutput);
   downloadQrBtn.addEventListener('click', downloadQrCode);
   startNfcWriteBtn.addEventListener('click', startNfcWrite);
   cancelNfcModalBtn.addEventListener('click', closeNfcModal);
 
-  // Initialize
+  // Initial Boot
   checkNfcSupport();
-  generateSwishPayload();
+  generateSwish();
 
 })();

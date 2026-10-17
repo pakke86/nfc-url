@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Swish NFC URL Generator - Modern Premium Stylesheet
+   Swish & NFC Generator Suite - Modern Premium Stylesheet
    ========================================================================== */
 
 :root {
@@ -111,7 +111,7 @@ body {
 
 /* Header */
 .app-header {
-  padding: 32px 0 24px;
+  padding: 24px 0 18px;
   border-bottom: 1px solid var(--bg-card-border);
   background: rgba(9, 13, 22, 0.7);
   backdrop-filter: blur(16px);
@@ -152,7 +152,7 @@ body {
 }
 
 .brand h1 {
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #fff;
@@ -165,9 +165,113 @@ body {
 }
 
 .brand-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
   margin-top: 2px;
+}
+
+/* ==========================================================================
+   Category Navigation Bar (NFC Groups)
+   ========================================================================== */
+.category-nav-container {
+  padding-top: 22px;
+  padding-bottom: 4px;
+}
+
+.category-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+@media (max-width: 1080px) {
+  .category-tabs {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .category-tabs {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 8px;
+  }
+  .category-tab {
+    min-width: 160px;
+    scroll-snap-align: start;
+  }
+}
+
+.category-tab {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  color: var(--text-muted);
+}
+
+.category-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.category-tab.active {
+  background: linear-gradient(135deg, rgba(0, 140, 212, 0.15), rgba(16, 185, 129, 0.1));
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 18px var(--primary-glow);
+}
+
+.category-tab.active strong {
+  color: #38bdf8;
+}
+
+.cat-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.cat-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.cat-text strong {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.cat-text small {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Category Panels */
+.category-panel {
+  display: none;
+  animation: panelFadeIn 0.25s ease;
+}
+
+.category-panel.active {
+  display: block;
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Badges */
@@ -213,7 +317,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 32px;
-  padding-top: 36px;
+  padding-top: 24px;
   padding-bottom: 60px;
   flex: 1;
 }
@@ -244,7 +348,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .card-header h2, .card-header h3 {
@@ -273,12 +377,13 @@ body {
 .section-subtext {
   font-size: 0.85rem;
   color: var(--text-muted);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+  line-height: 1.45;
 }
 
 /* Presets */
 .preset-group {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .preset-chips {
@@ -317,9 +422,18 @@ body {
   box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-/* Form Groups */
+/* Form Groups & Rows */
+.form-row {
+  display: flex;
+  gap: 14px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
 .form-group {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .label-row {
@@ -390,7 +504,10 @@ body {
 
 input[type="text"],
 input[type="tel"],
+input[type="email"],
+input[type="url"],
 input[type="number"],
+select.custom-select,
 textarea {
   width: 100%;
   background: var(--input-bg);
@@ -404,10 +521,19 @@ textarea {
   outline: none;
 }
 
-input:focus, textarea:focus {
+.form-group input:not([type="checkbox"]):not([type="radio"]):not(.input-wrapper input),
+select.custom-select {
+  padding-left: 14px;
+}
+
+input:focus, select:focus, textarea:focus {
   border-color: var(--input-focus);
   background: rgba(15, 23, 42, 0.85);
   box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+select.custom-select {
+  cursor: pointer;
 }
 
 .input-suffix {
@@ -479,25 +605,40 @@ input:focus, textarea:focus {
   border-color: #38bdf8;
 }
 
-/* Switch Toggle */
+/* ==========================================================================
+   Fully Clickable Toggle Controls (Lock Swish Switches)
+   ========================================================================== */
 .toggle-control {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
   margin-top: 12px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.toggle-control:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.toggle-control.active {
+  background: rgba(0, 140, 212, 0.1);
+  border-color: var(--primary);
 }
 
 .switch {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 22px;
+  width: 44px;
+  height: 24px;
   flex-shrink: 0;
-  margin-top: 2px;
+  pointer-events: none; /* Allows the parent label to capture the click cleanly */
 }
 
 .switch input {
@@ -510,16 +651,16 @@ input:focus, textarea:focus {
   position: absolute;
   cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.18);
   transition: 0.25s;
-  border-radius: 22px;
+  border-radius: 24px;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
+  height: 18px;
+  width: 18px;
   left: 3px;
   bottom: 3px;
   background-color: white;
@@ -532,23 +673,42 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-  transform: translateX(18px);
+  transform: translateX(20px);
 }
 
 .toggle-text {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .toggle-title {
-  font-size: 0.825rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 700;
   color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lock-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.lock-status-badge.unlocked {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
 }
 
 .toggle-desc {
   font-size: 0.725rem;
   color: var(--text-dim);
+  margin-top: 2px;
 }
 
 /* Summary Card */
@@ -936,7 +1096,9 @@ input:checked + .slider:before {
   width: fit-content;
 }
 
-/* Live Mockup */
+/* ==========================================================================
+   Live Mockups (Phone screen representation)
+   ========================================================================== */
 .mockup-card {
   display: flex;
   flex-direction: column;
@@ -970,6 +1132,7 @@ input:checked + .slider:before {
   flex-direction: column;
 }
 
+/* Swish Phone Screen */
 .mock-swish-header {
   background: #ffffff;
   padding: 14px 16px;
@@ -1064,6 +1227,51 @@ input:checked + .slider:before {
 
 .mock-swish-btn {
   margin-top: auto;
+  background: #0284c7;
+  color: #ffffff;
+  padding: 12px;
+  border-radius: 9999px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+}
+
+/* Generic Phone Screen (Wi-Fi, URL, vCard) */
+.mock-generic-header {
+  background: #ffffff;
+  padding: 22px 16px 14px;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.mock-generic-icon {
+  font-size: 2.2rem;
+  margin-bottom: 6px;
+}
+
+.mock-generic-header h4 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.mock-generic-header p {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.mock-generic-body {
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.mock-generic-btn {
+  margin: 0 16px 18px;
   background: #0284c7;
   color: #ffffff;
   padding: 12px;
