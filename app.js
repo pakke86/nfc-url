@@ -175,20 +175,16 @@
 
     if (hasAmount) {
       payload.amount = {
-        value: amountVal
+        value: amountVal,
+        editable: !isAmountLocked
       };
-      if (isAmountLocked) {
-        payload.amount.editable = false;
-      }
     }
 
     if (hasMessage) {
       payload.message = {
-        value: messageVal
+        value: messageVal,
+        editable: !isMessageLocked
       };
-      if (isMessageLocked) {
-        payload.message.editable = false;
-      }
     }
 
     // Current format: 'universal' (https://app.swish.nu) or 'scheme' (swish://payment)
@@ -197,7 +193,8 @@
 
     if (currentFormat === 'universal') {
       // Official Swish Web / Universal URL (Optimal for NFC & iOS/Android background read)
-      // e.g., https://app.swish.nu/1/p/sw/?sw=0701234567&amt=50&cur=SEK&msg=Kaffe
+      // Note on Swish spec: by default in Swish, prefilled fields are locked.
+      // To allow the payer to edit a field, the 'edit' parameter is added (e.g. edit=amt, edit=msg, edit=amt,msg).
       let url = `https://app.swish.nu/1/p/sw/?sw=${encodeURIComponent(activePayee)}`;
       if (hasAmount) {
         url += `&amt=${amountVal}&cur=SEK`;
@@ -205,6 +202,19 @@
       if (hasMessage) {
         url += `&msg=${encodeURIComponent(messageVal)}`;
       }
+
+      // Add edit parameter for unlocked/editable fields
+      const editableFields = [];
+      if (hasAmount && !isAmountLocked) {
+        editableFields.push('amt');
+      }
+      if (hasMessage && !isMessageLocked) {
+        editableFields.push('msg');
+      }
+      if (editableFields.length > 0) {
+        url += `&edit=${editableFields.join(',')}`;
+      }
+
       fullSwishUrl = url;
     } else {
       // Swish URI Scheme (App Deep Link)
